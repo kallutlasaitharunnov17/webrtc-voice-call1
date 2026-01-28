@@ -1,41 +1,15 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>WebRTC TTS Demo</title>
+  <title>Live WebRTC TTS</title>
+  <link rel="stylesheet" href="style.css">
 </head>
 <body>
-  <h2>WebSocket TTS Demo</h2>
-  <input type="text" id="textInput" placeholder="Type something" />
-  <button id="sendBtn">Send</button>
+  <h2>Live WebRTC + TTS Demo</h2>
+  <button id="startBtn">Start</button>
+  <button id="endBtn" disabled>End</button>
+  <audio id="remoteAudio" autoplay></audio>
 
-  <script>
-    const ws = new WebSocket('ws://localhost:8080');
-
-    ws.onopen = () => console.log('Connected to server');
-
-    ws.onmessage = (event) => {
-      const msg = JSON.parse(event.data);
-
-      if (msg.type === 'audio') {
-        // Convert Base64 to audio and play
-        const audioData = atob(msg.data);
-        const buffer = new Uint8Array(audioData.length);
-        for (let i = 0; i < audioData.length; i++) {
-          buffer[i] = audioData.charCodeAt(i);
-        }
-
-        const blob = new Blob([buffer], { type: 'audio/wav' });
-        const url = URL.createObjectURL(blob);
-
-        const audio = new Audio(url);
-        audio.play().catch(err => console.error('Playback error:', err));
-      }
-    };
-
-    document.getElementById('sendBtn').onclick = () => {
-      const text = document.getElementById('textInput').value;
-      ws.send(JSON.stringify({ type: 'text', text }));
-    };
-  </script>
+  <script src="scripty.js"></script>
 </body>
 </html>
