@@ -23,9 +23,7 @@ wss.on('connection', ws => {
   console.log('Client connected');
 
   ws.on('message', msg => {
-    const data = JSON.parse(msg);
-
-    // Relay SDP and ICE candidates to other clients
+    // Broadcast to all other clients
     wss.clients.forEach(client => {
       if (client !== ws && client.readyState === WebSocket.OPEN) {
         client.send(msg);
