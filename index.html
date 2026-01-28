@@ -1,18 +1,41 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>WebRTC Voice Call</title>
-<link rel="stylesheet" href="style.css">
+  <title>WebRTC TTS Demo</title>
 </head>
 <body>
-<h1>WebRTC Voice Call</h1>
-<button id="startBtn">Start Call</button>
-<button id="endBtn" disabled>End Call</button>
+  <h2>WebSocket TTS Demo</h2>
+  <input type="text" id="textInput" placeholder="Type something" />
+  <button id="sendBtn">Send</button>
 
-<audio id="remoteAudio" autoplay></audio>
+  <script>
+    const ws = new WebSocket('ws://localhost:8080');
 
-<script src="script.js"></script>
+    ws.onopen = () => console.log('Connected to server');
+
+    ws.onmessage = (event) => {
+      const msg = JSON.parse(event.data);
+
+      if (msg.type === 'audio') {
+        // Convert Base64 to audio and play
+        const audioData = atob(msg.data);
+        const buffer = new Uint8Array(audioData.length);
+        for (let i = 0; i < audioData.length; i++) {
+          buffer[i] = audioData.charCodeAt(i);
+        }
+
+        const blob = new Blob([buffer], { type: 'audio/wav' });
+        const url = URL.createObjectURL(blob);
+
+        const audio = new Audio(url);
+        audio.play().catch(err => console.error('Playback error:', err));
+      }
+    };
+
+    document.getElementById('sendBtn').onclick = () => {
+      const text = document.getElementById('textInput').value;
+      ws.send(JSON.stringify({ type: 'text', text }));
+    };
+  </script>
 </body>
 </html>
