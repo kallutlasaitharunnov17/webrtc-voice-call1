@@ -32,7 +32,8 @@ wss.on('connection', ws => {
       // Simple Node TTS using say.js (or you can call Python script)
       // Here we will use a command-line TTS to generate WAV
       const outputFile = 'audio.wav';
-      exec(`powershell -Command "Add-Type –AssemblyName System.speech; $speak = New-Object System.Speech.Synthesis.SpeechSynthesizer; $speak.SetOutputToWaveFile('${outputFile}'); $speak.Speak('${text}');"`, (err) => {
+      exec(`powershell -Command "Add-Type -AssemblyName System.Speech; $speak = New-Object System.Speech.Synthesis.SpeechSynthesizer; $speak.SetOutputToWaveFile('${outputFile}'); $speak.Speak('${text}');"`, (err) => {
+
         if (err) return console.error(err);
 
         // Read WAV file and send to client
