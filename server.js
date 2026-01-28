@@ -1,47 +1,61 @@
 const fs = require('fs');
 const http = require('http');
 const WebSocket = require('ws');
-const { exec } = require('child_process'); // optional, if using command-line TTS
+const say = require('say'); // npm install say
 
-// Create HTTP server (for serving static HTML)
+// Serve HTML
 const server = http.createServer((req, res) => {
-  fs.readFile('index.html', (err, data) => {
-    if (err) {
-      res.writeHead(500);
-      return res.end('Error loading page');
-    }
-    res.writeHead(200, {'Content-Type': 'text/html'});
+  let file = req.url === '/scripty.js' ? 'scripty.js' :
+             req.url === '/style.css' ? 'style.css' :
+             'index.html';
+  fs.readFile(file, (err, data) => {
+    if (err) { res.writeHead(500); return res.end('Error'); }
+    const type = file.endsWith('.js') ? 'text/javascript' :
+                 file.endsWith('.css') ? 'text/css' : 'text/html';
+    res.writeHead(200, { 'Content-Type': type });
     res.end(data);
   });
 });
 
-server.listen(8080, () => console.log('HTTP server running on http://localhost:8080'));
+server.listen(8080, () => console.log('Server running on http://localhost:8080'));
 
-// WebSocket server for sending/receiving audio
+// WebSocket server for signaling + TTS
 const wss = new WebSocket.Server({ server });
 
 wss.on('connection', ws => {
   console.log('Client connected');
 
-  ws.on('message', async message => {
-    const msg = JSON.parse(message);
+  ws.on('message', async msg => {
+    const data = JSON.parse(msg);
 
-    if (msg.type === 'text') {
-      const text = msg.text;
-      
-      // Simple Node TTS using say.js (or you can call Python script)
-      // Here we will use a command-line TTS to generate WAV
+    // === WebRTC signaling ===
+    if (data.sdp || data.candidate) {
+      // broadcast to other clients
+      wss.clients.forEach(client => {
+        if (client !== ws && client.readyState === WebSocket.OPEN) {
+          client.send(msg);
+        }
+      });
+    }
+
+    // === TTS text messages ===
+    if (data.type === 'text') {
+      const text = data.text;
       const outputFile = 'audio.wav';
-      exec(`powershell -Command "Add-Type -AssemblyName System.Speech; $speak = New-Object System.Speech.Synthesis.SpeechSynthesizer; $speak.SetOutputToWaveFile('${outputFile}'); $speak.Speak('${text}');"`, (err) => {
 
-        if (err) return console.error(err);
+      // Generate TTS using say
+      say.export(text, null, 1.0, outputFile, (err) => {
+        if (err) { console.error('TTS error:', err); return; }
 
-        // Read WAV file and send to client
         const audioData = fs.readFileSync(outputFile);
-        ws.send(JSON.stringify({
-          type: 'audio',
-          data: audioData.toString('base64') // send as Base64
-        }));
+        const base64 = audioData.toString('base64');
+
+        // Send TTS audio back to all clients
+        wss.clients.forEach(client => {
+          if (client.readyState === WebSocket.OPEN) {
+            client.send(JSON.stringify({ type: 'audio', data: base64 }));
+          }
+        });
       });
     }
   });
